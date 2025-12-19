@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, storage, auth } from '../../lib/firebase';
+// ... otros imports ...
+import imageCompression from 'browser-image-compression'; // <--- NUEVO
 import { 
   collection, 
   addDoc, 
@@ -60,31 +62,60 @@ export default function AdminDashboard() {
     }
   };
 
+  // 3. PUBLICAR EN FIREBASE (CONVERSIÓN A WEBP)
   const handlePublish = async (e) => {
     e.preventDefault();
-    if (!title || !imageFile) return alert("Falta título o imagen");
+    if (!title || !imageFile) {
+      alert("Por favor añade un título y una imagen.");
+      return;
+    }
 
     setLoading(true);
+
     try {
-      const storageRef = ref(storage, `pasteles/${Date.now()}_${imageFile.name}`);
-      const snapshot = await uploadBytes(storageRef, imageFile);
+      // --- PASO 1: COMPRIMIR Y CONVERTIR A WEBP ---
+      console.log(`Original: ${imageFile.size / 1024 / 1024} MB`);
+      
+      const options = {
+        maxSizeMB: 0.5,          // Máximo peso: 500KB (Ideal para web)
+        maxWidthOrHeight: 1200,  // Máxima resolución (No necesitamos 4K para un post)
+        useWebWorker: true,      // Usa hilos secundarios para no congelar la pantalla
+        fileType: 'image/webp',   // FORZAR conversión a WebP
+        initialQuality: 0.8      // Calidad visual (0 a 1)
+      };
+
+      const compressedFile = await imageCompression(imageFile, options);
+      console.log(`Comprimido: ${compressedFile.size / 1024 / 1024} MB`);
+
+      // --- PASO 2: SUBIR LA VERSIÓN OPTIMIZADA ---
+      // Cambiamos la extensión del nombre a .webp
+      const fileName = imageFile.name.split('.')[0]; 
+      const storageRef = ref(storage, `pasteles/${Date.now()}_${fileName}.webp`);
+      
+      const snapshot = await uploadBytes(storageRef, compressedFile);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
+      // --- PASO 3: GUARDAR EN FIRESTORE ---
       await addDoc(collection(db, "posts"), {
-        title,
-        description: description || "Delicia artesanal",
+        title: title,
+        description: description || "Delicioso postre artesanal.",
         image: downloadURL,
         views: 0,
         likes: 0,
-        comments: [], // Iniciamos array vacío
+        comments: [],
         createdAt: serverTimestamp()
       });
 
-      setTitle(''); setDescription(''); setImageFile(null); setImagePreview(null);
-      alert("¡Publicado!");
+      // Limpiar formulario
+      setTitle('');
+      setDescription('');
+      setImageFile(null);
+      setImagePreview(null);
+      alert("¡Postre optimizado y publicado con éxito!");
+
     } catch (error) {
-      console.error(error);
-      alert("Error al subir");
+      console.error("Error al publicar:", error);
+      alert("Error al subir. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
