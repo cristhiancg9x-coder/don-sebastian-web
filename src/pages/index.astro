@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar.astro';
 import Feed from '../components/react/Feed.jsx';
 import Services from '../components/Services.astro';
 import { Image } from 'astro:assets';
+import fotoUbicacionImg from '../assets/Foto-de-ubicacion.webp';
 
 // DATOS REALES DE LA EMPRESA
 const business = {
@@ -125,14 +126,15 @@ const schemaData = {
           </div>
         </div>
 
-        <div class="md:w-1/2 w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border-4 border-[#FFF5E1]/20 group">
+        <div class="relative group animate-fade-in-right">
+          <div class="absolute -top-4 -left-4 w-24 h-24 bg-[#D2691E]/20 rounded-full blur-xl"></div>
+          <div class="absolute -bottom-4 -right-4 w-32 h-32 bg-primary/20 rounded-full blur-xl"></div>
+
+          {/* USAMOS LA NUEVA FOTO IMPORTADA */}
           <Image 
-            src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1000" 
-            alt="Interior del local Don Sebastián" 
-            width={800}
-            height={600}
-            format="webp"
-            class="w-full h-full object-cover transform group-hover:scale-105 transition-duration-700"
+            src={fotoUbicacionImg}
+            alt="Fachada de la pastelería Don Sebastián en el Badén"
+            class="w-full h-auto rounded-3xl shadow-2xl relative z-10 transform group-hover:scale-105 transition-transform duration-500 object-cover aspect-[4/3]" 
           />
         </div>
 
