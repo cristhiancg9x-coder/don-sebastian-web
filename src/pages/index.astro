@@ -1,16 +1,148 @@
 ---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+import Feed from '../components/react/Feed.jsx';
+import Services from '../components/Services.astro';
+import { Image } from 'astro:assets';
 
+// DATOS REALES DE LA EMPRESA
+const business = {
+  name: "Don Sebastián - Postres y Tortas",
+  address: "El Badén, Av. Jesús 2511, Paucarpata 04001, Arequipa",
+  hours: "Lun - Dom: 8:30 AM - 9:00 PM",
+  phone: "+51 999 999 999", // (Número referencial)
+  googleMapsUrl: "https://goo.gl/maps/TuLinkDeMapsAqui" // Puedes poner el link real si lo tienes
+};
+
+// SEO: SCHEMA.ORG PARA NEGOCIOS LOCALES (Invisble para usuarios, oro para Google)
+const schemaData = {
+  "@context": "https://schema.org",
+  "@type": "Bakery",
+  "name": business.name,
+  "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=1000",
+  "description": "Panadería artesanal y pastelería fina en Paucarpata, Arequipa. Especialidad en tortas y postres tradicionales.",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "El Badén, Av. Jesús 2511",
+    "addressLocality": "Paucarpata",
+    "addressRegion": "Arequipa",
+    "postalCode": "04001",
+    "addressCountry": "PE"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": -16.4326, // Coordenadas aprox de Paucarpata (ajustar si tienes las exactas)
+    "longitude": -71.5034
+  },
+  "openingHours": "Mo-Su 08:30-21:00",
+  "priceRange": "$$"
+};
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Don Sebastián | Postres y Tortas en Arequipa">
+  <script type="application/ld+json" set:html={JSON.stringify(schemaData)} />
+
+  <Navbar />
+  
+  <main class="bg-pattern-bakery min-h-screen">
+    
+    <section id="inicio" class="relative h-[85vh] flex items-center justify-center overflow-hidden bg-gray-900">
+      
+      <div class="absolute inset-0 z-0">
+        <Image 
+          src="https://images.unsplash.com/photo-1626803775151-61d756612f97?q=80&w=2000" 
+          alt="Vitrina de Don Sebastián Arequipa" 
+          width={1920} 
+          height={1080}
+          format="webp"
+          class="w-full h-full object-cover opacity-60 animate-fade-in"
+        />
+      <div class="relative z-10 text-center text-white px-4 max-w-4xl mx-auto mt-10">
+        <span class="inline-block py-2 px-5 border border-white/40 rounded-full bg-primary/90 backdrop-blur-md text-sm font-bold mb-6 tracking-widest uppercase shadow-lg animate-fade-in-up">
+          🎂 Desde 1990 en Arequipa
+        </span>
+        
+        <h1 class="font-serif text-5xl md:text-7xl lg:text-8xl mb-8 drop-shadow-2xl font-bold leading-tight">
+          El arte de endulzar <br/>
+          <span class="text-primary italic font-script pr-2">la vida</span>
+        </h1>
+        
+        <p class="text-xl md:text-2xl font-light mb-12 text-gray-100 text-shadow-strong max-w-2xl mx-auto">
+          De la mano del maestro repostero <strong>Don Sebastián</strong>.
+        </p>
+        
+        <div class="flex flex-col sm:flex-row gap-5 justify-center">
+          <a href="#novedades" class="bg-primary hover:bg-[#A0522D] text-white text-lg font-bold py-4 px-12 rounded-full shadow-[0_6px_0_rgb(139,69,19)] hover:shadow-[0_3px_0_rgb(139,69,19)] hover:translate-y-1 transition-all">
+            Ver Antojos de Hoy
+          </a>
+        </div>
+      </div>
+    </section>
+    <section id="novedades" class="py-24 px-4 max-w-7xl mx-auto relative z-10">
+      <div class="text-center mb-16">
+        <h2 class="font-serif text-5xl text-dark mb-4">Recién Salidos del Horno</h2>
+        <div class="h-1.5 w-24 bg-primary mx-auto rounded-full mb-6"></div>
+        <p class="text-dark/80 text-lg font-light">
+            Actualizado en tiempo real desde nuestro taller en <strong class="text-primary">El Badén</strong>
+        </p>
+      </div>
+
+      <Feed client:visible />
+      <Services />
+    </section>
+
+    <section id="contacto" class="bg-dark text-[#FFF5E1] py-20 relative overflow-hidden border-t-8 border-primary">
+      
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-yellow-400 to-primary"></div>
+      
+      <div class="max-w-6xl mx-auto px-6 relative z-10 flex flex-col md:flex-row gap-16 items-center justify-between">
+        
+        <div class="md:w-1/2 text-center md:text-left">
+          <h2 class="font-serif text-4xl md:text-5xl mb-8 text-primary">Visítanos</h2>
+          
+          <div class="space-y-6 text-lg font-light">
+            <div class="flex items-start gap-4 justify-center md:justify-start group">
+              <span class="text-3xl bg-white/10 p-2 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">📍</span>
+              <div class="flex flex-col">
+                <strong class="text-xl mb-1 text-white">Dirección</strong>
+                <span>{business.address}</span>
+              </div>
+            </div>
+            
+            <div class="flex items-start gap-4 justify-center md:justify-start group">
+              <span class="text-3xl bg-white/10 p-2 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">⏰</span>
+              <div class="flex flex-col">
+                 <strong class="text-xl mb-1 text-white">Horario de Atención</strong>
+                 <span>{business.hours}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-10">
+            <a href={business.googleMapsUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 bg-[#FFF5E1] text-dark font-bold py-3 px-8 rounded-full hover:bg-primary hover:text-white transition-colors transform hover:scale-105 shadow-lg">
+              <span>🗺️</span> Ver Ubicación en Google Maps
+            </a>
+          </div>
+        </div>
+
+        <div class="md:w-1/2 w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border-4 border-[#FFF5E1]/20 group">
+          <Image 
+            src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1000" 
+            alt="Interior del local Don Sebastián" 
+            width={800}
+            height={600}
+            format="webp"
+            class="w-full h-full object-cover transform group-hover:scale-105 transition-duration-700"
+          />
+        </div>
+
+      </div>
+
+      <div class="text-center mt-20 pt-8 border-t border-white/10 text-sm text-white/40">
+        © {new Date().getFullYear()} Don Sebastián - Arequipa. Todos los derechos reservados.
+      </div>
+
+    </section>
+
+  </main>
+</Layout>

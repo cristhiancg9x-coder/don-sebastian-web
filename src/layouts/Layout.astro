@@ -1,0 +1,40 @@
+---
+import '../styles/global.css'; // <--- AGREGA ESTA LÍNEA AQUÍ
+import WhatsAppFloat from '../components/WhatsAppFloat.astro';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" class="scroll-smooth">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Pastelería Don Sebastián - El sabor de la tradición en cada bocado" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=swap" rel="stylesheet">
+	</head>
+	
+	<body class="font-sans bg-secondary text-dark antialiased">
+		<slot />
+		<WhatsAppFloat />
+	</body>
+</html>
+
+<style is:global>
+	/* Estilos globales opcionales si Tailwind no cubre algo específico */
+	html, body {
+		height: 100%;
+		margin: 0;
+	}
+</style>

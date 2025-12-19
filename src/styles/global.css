@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta "Don Sebastián" - Actualizada a tonos más vivos */
+  --color-primary: #D2691E;   /* Chocolate Cinnamon (Botones/Acción) */
+  --color-secondary: #FFEFD5; /* PapayaWhip (Crema más saturado) */
+  --color-accent: #FFD700;    /* Dorado */
+  --color-dark: #3E2723;      /* Café Oscuro (Texto) */
+  --color-pastel-pink: #FFE4E1; /* MistyRose (Nuevo toque pastel) */
+  
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+
+  /* AGREGAMOS ESTA NUEVA: */
+  --font-script: 'Great Vibes', cursive;
+
+  --animate-swing: swing 4s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  
+  @keyframes swing {
+    0%, 100% { transform: rotate(6deg); }
+    50% { transform: rotate(-6deg); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+}
+
+/* NUEVO FONDO: Degradado Pastel + Textura */
+.bg-pattern-bakery {
+  background-color: var(--color-secondary);
+  /* Degradado sutil de crema a rosado pastel muy suave */
+  background-image: 
+    radial-gradient(var(--color-primary) 0.5px, transparent 0.5px),
+    linear-gradient(to bottom right, var(--color-secondary), var(--color-pastel-pink));
+  background-size: 20px 20px, 100% 100%;
+  background-attachment: fixed; /* El fondo se queda quieto al hacer scroll (Elegante) */
+}
+
+/* Clases de utilidad para textos sobre imágenes */
+.text-shadow-strong {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+html {
+  scroll-behavior: smooth;
+}

@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AdminGuard from '../components/react/AdminGuard.jsx'; // <--- CAMBIO AQUÍ
+---
+
+<Layout title="Acceso Privado | Don Sebastián">
+  
+  <AdminGuard client:only="react" />
+
+</Layout>
