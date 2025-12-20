@@ -250,7 +250,7 @@ export default function Feed() {
                 </div>
               </div>
 
-              <div className="p-4 bg-white border-t border-orange-100">
+              <div className="p-4 bg-white border-t border-orange-100 pr-20 md:pr-4">
                 {user ? (
                     <div className="flex gap-2 items-center">
                         <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-200" />
