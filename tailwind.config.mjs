@@ -4,11 +4,11 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				// Paleta "Don Sebastián"
-				primary: '#D2691E', // Chocolate Cinnamon
-				secondary: '#FFF8E1', // Cream/Vainilla (Fondo)
-				accent: '#FFD700', // Golden Glaze (Estrellas/Likes)
-				dark: '#3E2723', // Dark Coffee (Texto)
+				// Paleta "Detalles del Corazón" (Floral)
+				primary: '#D81B60', // Rosa Vibrante
+				secondary: '#FCE4EC', // Rosa Pastel
+				accent: '#FFC107', // Ámbar/Dorado
+				dark: '#1B5E20', // Verde Bosque
 			},
 			fontFamily: {
 				sans: ['Inter', 'sans-serif'], // Texto cuerpo

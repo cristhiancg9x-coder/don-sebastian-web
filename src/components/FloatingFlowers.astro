@@ -1,0 +1,55 @@
+---
+// src/components/FloatingFlowers.astro
+---
+<div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+  {Array.from({ length: 15 }).map((_, i) => {
+    // Generar valores aleatorios puramente en CSS para evitar fallos de hidratación SSR/Static
+    const size = 20 + Math.random() * 40; // 20px a 60px
+    const left = Math.random() * 100; // 0% a 100%
+    const delay = Math.random() * -20; // -20s a 0s
+    const duration = 15 + Math.random() * 15; // 15s a 30s
+    // Seleccionar color
+    const colors = ['text-[#D81B60]', 'text-[#FCE4EC]', 'text-[#FFC107]'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    // Opacidad inicial
+    const opacity = 0.2 + Math.random() * 0.4;
+    
+    return (
+      <div 
+        class={`absolute -bottom-20 ${color} animate-float`}
+        style={`
+          left: ${left}%; 
+          width: ${size}px; 
+          height: ${size}px; 
+          animation-duration: ${duration}s;
+          animation-delay: ${delay}s;
+          opacity: ${opacity};
+        `}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+           <path d="M12 2C9.5 2 8.5 4.5 9 6.5C7 6 4.5 7 4.5 9.5C4.5 12 7.5 13 8.5 13C7 14.5 7 17.5 9.5 17.5C11.5 17.5 12 15 12 15C12 15 12.5 17.5 14.5 17.5C17 17.5 17 14.5 15.5 13C16.5 13 19.5 12 19.5 9.5C19.5 7 17 6 15 6.5C15.5 4.5 14.5 2 12 2Z" />
+        </svg>
+      </div>
+    );
+  })}
+</div>
+
+<style is:global>
+  @keyframes float {
+    0% {
+      transform: translateY(0) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-50vh) rotate(180deg) translateX(30px);
+    }
+    100% {
+      transform: translateY(-120vh) rotate(360deg) translateX(-30px);
+    }
+  }
+  
+  .animate-float {
+    animation-name: float;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+</style>

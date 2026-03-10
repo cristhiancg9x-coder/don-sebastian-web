@@ -4,36 +4,35 @@ import { Image } from 'astro:assets';
 import AuthButton from './react/AuthButton.jsx';
 ---
 
-<nav class="sticky top-0 z-50 bg-[#FFF5E1]/95 backdrop-blur-md shadow-md border-b-4 border-primary/40">
+<nav class="sticky top-0 z-50 bg-secondary/95 backdrop-blur-md shadow-md border-b-4 border-primary/40">
   <div class="max-w-7xl mx-auto px-4 md:px-6">
     <div class="flex justify-between items-center h-24">
       
-      {/* 1. LOGO (Tus estilos originales intactos) */}
+      {/* 1. LOGO */}
       <a href="/" class="relative z-10 flex items-center gap-3 group text-decoration-none">
         <span class="text-4xl md:text-5xl filter drop-shadow-md animate-bounce duration-[2000ms]">
-          🧁
+          🌸
         </span> 
         <div class="flex flex-col items-start pt-2">
-          <span class="font-script text-5xl md:text-6xl text-[#A0522D] transform -rotate-2 origin-left drop-shadow-sm transition-transform group-hover:scale-105 group-hover:text-primary leading-[0.8]">
-            Don Sebastián
+          <span class="font-script text-4xl md:text-5xl text-[#D81B60] transform -rotate-2 origin-left drop-shadow-sm transition-transform group-hover:scale-105 group-hover:text-primary leading-[0.8] mt-2">
+            Detalles del Corazón
           </span>
-          <span class="text-[10px] md:text-xs text-primary font-sans font-bold tracking-[0.2em] uppercase mt-1 ml-2">
-            Postres y Tortas • Arequipa
+          <span class="text-[9px] md:text-[10px] text-primary font-sans font-bold tracking-[0.2em] uppercase mt-1 ml-2">
+            Regalos y Detalles • Arequipa
           </span>
         </div>
       </a>
 
-      {/* 2. PENDIENTE COLGANTE (Donita) 
-          Nota: "pointer-events-none" asegura que los clics pasen a través de ella 
-          y no bloqueen el botón del menú. */}
+      {/* 2. PENDIENTE COLGANTE (Flor) */}
       <div class="absolute top-0 right-4 md:right-[15%] block animate-swing origin-top pointer-events-none z-50">
          <div class="h-16 w-0.5 bg-primary/60 mx-auto"></div>
          <svg width="45" height="45" viewBox="0 0 45 45" fill="none" class="-mt-1 drop-shadow-lg">
-            <circle cx="22.5" cy="22.5" r="20" fill="#D2691E" stroke="#3E2723" stroke-width="2"/>
-            <circle cx="22.5" cy="22.5" r="7" fill="#FFF5E1" stroke="#3E2723" stroke-width="2"/>
-            <path d="M15 15L17 17" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
-            <path d="M30 30L32 32" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
-            <path d="M30 15L28 17" stroke="#FF69B4" stroke-width="2" stroke-linecap="round"/>
+            <!-- Flor de Limpia Pipas -->
+            <circle cx="22.5" cy="12" r="7" fill="#D81B60" stroke="#1B5E20" stroke-width="1.5"/>
+            <circle cx="22.5" cy="33" r="7" fill="#D81B60" stroke="#1B5E20" stroke-width="1.5"/>
+            <circle cx="12" cy="22.5" r="7" fill="#D81B60" stroke="#1B5E20" stroke-width="1.5"/>
+            <circle cx="33" cy="22.5" r="7" fill="#D81B60" stroke="#1B5E20" stroke-width="1.5"/>
+            <circle cx="22.5" cy="22.5" r="8" fill="#FFC107" stroke="#3E2723" stroke-width="1.5"/>
          </svg>
       </div>
 
@@ -59,11 +58,11 @@ import AuthButton from './react/AuthButton.jsx';
   </div>
 
   {/* 5. EL MENÚ DESPLEGABLE MÓVIL (Esto faltaba) */}
-  <div id="mobile-menu" class="hidden md:hidden bg-[#FFF5E1] border-t border-orange-200 shadow-xl absolute w-full left-0 top-full">
-      <div class="px-6 py-6 space-y-4 flex flex-col items-center font-sans font-bold text-[#3E2723]">
-          <a href="#inicio" class="block text-lg hover:text-[#D2691E]">Inicio</a>
-          <a href="#novedades" class="block text-lg hover:text-[#D2691E]">Novedades</a>
-          <a href="#contacto" class="block text-lg hover:text-[#D2691E]">Visítanos</a>
+  <div id="mobile-menu" class="hidden md:hidden bg-secondary border-t border-primary/20 shadow-xl absolute w-full left-0 top-full">
+      <div class="px-6 py-6 space-y-4 flex flex-col items-center font-sans font-bold text-dark">
+          <a href="#inicio" class="block text-lg hover:text-primary">Inicio</a>
+          <a href="#novedades" class="block text-lg hover:text-primary">Novedades</a>
+          <a href="#contacto" class="block text-lg hover:text-primary">Visítanos</a>
           
           <div class="pt-4 border-t border-orange-200 w-full flex justify-center">
              <AuthButton client:load />

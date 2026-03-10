@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  /* Paleta "Don Sebastián" - Actualizada a tonos más vivos */
-  --color-primary: #D2691E;   /* Chocolate Cinnamon (Botones/Acción) */
-  --color-secondary: #FFEFD5; /* PapayaWhip (Crema más saturado) */
-  --color-accent: #FFD700;    /* Dorado */
-  --color-dark: #3E2723;      /* Café Oscuro (Texto) */
-  --color-pastel-pink: #FFE4E1; /* MistyRose (Nuevo toque pastel) */
+  /* Paleta "Detalles del Corazón" - Tema Floral */
+  --color-primary: #D81B60;   /* Rosa Vibrante (Botones/Acción/Flores) */
+  --color-secondary: #FCE4EC; /* Rosa Pastel Muy Claro (Fondo) */
+  --color-accent: #FFC107;    /* Ámbar/Dorado (Detalles/Estrellas) */
+  --color-dark: #1B5E20;      /* Verde Bosque Oscuro (Texto/Tallos) */
+  --color-soft-green: #E8F5E9; /* Verde Suave (Textura fondo) */
   
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Playfair Display', serif;
@@ -28,13 +28,13 @@
   }
 }
 
-/* NUEVO FONDO: Degradado Pastel + Textura */
-.bg-pattern-bakery {
+/* NUEVO FONDO: Degradado Floral + Textura */
+.bg-pattern-floral {
   background-color: var(--color-secondary);
-  /* Degradado sutil de crema a rosado pastel muy suave */
+  /* Degradado sutil de rosa pastel a verde suave */
   background-image: 
     radial-gradient(var(--color-primary) 0.5px, transparent 0.5px),
-    linear-gradient(to bottom right, var(--color-secondary), var(--color-pastel-pink));
+    linear-gradient(to bottom right, var(--color-secondary), var(--color-soft-green));
   background-size: 20px 20px, 100% 100%;
   background-attachment: fixed; /* El fondo se queda quieto al hacer scroll (Elegante) */
 }

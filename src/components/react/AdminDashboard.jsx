@@ -1,20 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db, storage, auth } from '../../lib/firebase';
-// ... otros imports ...
-import imageCompression from 'browser-image-compression'; // <--- NUEVO
-import { 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  updateDoc, 
-  doc, 
-  onSnapshot, 
-  serverTimestamp, 
-  query, 
-  orderBy,
-  arrayRemove 
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { supabase } from '../../lib/supabase';
+import imageCompression from 'browser-image-compression';
 import { 
   LayoutDashboard, 
   Settings, 
@@ -37,20 +23,44 @@ export default function AdminDashboard() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState(null);
+  const [tiktokUrl, setTiktokUrl] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
-  // 1. ESCUCHAR TODO EN TIEMPO REAL
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 1. ESCUCHAR TODO EN TIEMPO REAL CON SUPABASE
   useEffect(() => {
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setPosts(postsData);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user);
     });
-    return () => unsubscribe();
+
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          comments (*)
+        `)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setPosts(data);
+      }
+    };
+    
+    fetchPosts();
+
+    // Suscripción a cambios
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchPosts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchPosts)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // --- LÓGICA DASHBOARD (SUBIR POSTS) ---
@@ -87,28 +97,47 @@ export default function AdminDashboard() {
       const compressedFile = await imageCompression(imageFile, options);
       console.log(`Comprimido: ${compressedFile.size / 1024 / 1024} MB`);
 
-      // --- PASO 2: SUBIR LA VERSIÓN OPTIMIZADA ---
-      // Cambiamos la extensión del nombre a .webp
-      const fileName = imageFile.name.split('.')[0]; 
-      const storageRef = ref(storage, `pasteles/${Date.now()}_${fileName}.webp`);
+      // --- PASO 2: SUBIR LA VERSIÓN OPTIMIZADA A SUPABASE ---
+      // Limpiamos el nombre original de caracteres especiales, eñes y espacios
+      const cleanOriginalName = imageFile.name
+        .split('.')[0]
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // quita acentos y tildes
+        .replace(/[^a-zA-Z0-9-_\.]/g, "-") // reemplaza cosas raras por guiones
+        .toLowerCase();
+        
+      const fileName = `${Date.now()}_${cleanOriginalName}.webp`; 
       
-      const snapshot = await uploadBytes(storageRef, compressedFile);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('creaciones')
+        .upload(fileName, compressedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      // --- PASO 3: GUARDAR EN FIRESTORE ---
-      await addDoc(collection(db, "posts"), {
-        title: title,
-        description: description || "Delicioso postre artesanal.",
-        image: downloadURL,
-        views: 0,
-        likes: 0,
-        comments: [],
-        createdAt: serverTimestamp()
-      });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('creaciones').getPublicUrl(fileName);
+
+      // --- PASO 3: GUARDAR EN SUPABASE FIRESTORE ---
+      const { error: dbError } = await supabase
+        .from('posts')
+        .insert([{
+          title: title,
+          description: description || "Hermoso detalle hecho a mano.",
+          image: publicUrl,
+          tiktok_url: tiktokUrl || null,
+          views: 0,
+          likes: 0
+        }]);
+        
+      if (dbError) throw dbError;
 
       // Limpiar formulario
       setTitle('');
       setDescription('');
+      setTiktokUrl('');
       setImageFile(null);
       setImagePreview(null);
       alert("¡Postre optimizado y publicado con éxito!");
@@ -125,44 +154,31 @@ export default function AdminDashboard() {
     if (confirm('¿Borrar post y foto permanentemente?')) {
       try {
         if (post.image) {
-           const imageRef = ref(storage, post.image);
-           await deleteObject(imageRef).catch(e => console.log("Imagen ya no existe"));
+           // Extraer el nombre del archivo de la URL pública
+           const urlParts = post.image.split('/');
+           const fileName = urlParts[urlParts.length - 1];
+           await supabase.storage.from('creaciones').remove([fileName]);
         }
-        await deleteDoc(doc(db, "posts", post.id));
+        await supabase.from('posts').delete().eq('id', post.id);
       } catch (error) {
         console.error(error);
       }
     }
   };
 
-  // --- LÓGICA COMENTARIOS (MODERACIÓN) ---
-  // Aplanamos la lista: Sacamos los comentarios de dentro de cada post para verlos en una sola lista
   const allComments = posts.flatMap(post => 
     (post.comments || []).map(comment => ({
       ...comment,
-      postId: post.id,
       postTitle: post.title,
       postImage: post.image
     }))
-  ).sort((a, b) => new Date(b.date) - new Date(a.date)); // Más recientes primero
+  ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Más recientes primero
 
   const handleDeleteComment = async (commentItem) => {
     if(!confirm("¿Borrar este comentario?")) return;
 
     try {
-      const postRef = doc(db, "posts", commentItem.postId);
-      
-      // Necesitamos el objeto exacto para borrarlo del array
-      const commentToRemove = {
-        user: commentItem.user,
-        text: commentItem.text,
-        date: commentItem.date,
-        photo: commentItem.photo
-      };
-
-      await updateDoc(postRef, {
-        comments: arrayRemove(commentToRemove)
-      });
+      await supabase.from('comments').delete().eq('id', commentItem.id);
       alert("Comentario eliminado.");
     } catch (error) {
       console.error("Error al borrar comentario:", error);
@@ -170,18 +186,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => auth.signOut();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F5] font-sans text-slate-800">
       
       {/* SIDEBAR */}
-      <aside className="w-64 bg-[#3E2723] text-[#FFF5E1] flex flex-col shadow-2xl fixed h-full z-20">
+      <aside className="w-64 bg-[#4A148C] text-[#E1BEE7] flex flex-col shadow-2xl fixed h-full z-20">
         <div className="p-8 flex items-center gap-3">
-            <span className="text-3xl animate-bounce">🧁</span>
+            <span className="text-3xl animate-bounce">💜</span>
             <div>
                 <h1 className="font-serif text-xl font-bold leading-none">Admin</h1>
-                <span className="text-xs text-orange-300 opacity-70">Don Sebastián</span>
+                <span className="text-xs text-purple-200 opacity-70">Detalles del Corazón</span>
             </div>
         </div>
 
@@ -192,7 +210,7 @@ export default function AdminDashboard() {
         </nav>
 
         <div className="p-4">
-            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-400/30 text-red-300 rounded-xl hover:bg-red-900/20 transition-all text-sm">
+            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-purple-400/30 text-purple-200 rounded-xl hover:bg-purple-900/20 transition-all text-sm">
                 <LogOut size={16} /> Cerrar Sesión
             </button>
         </div>
@@ -205,33 +223,43 @@ export default function AdminDashboard() {
         {activeTab === 'dashboard' && (
           <div className="animate-fade-in-up">
             <header className="mb-8">
-                <h2 className="text-3xl font-serif text-[#3E2723] font-bold">Panel Principal</h2>
+                <h2 className="text-3xl font-serif text-[#4A148C] font-bold">Panel Principal</h2>
                 <p className="text-gray-500">Administra tus productos.</p>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* FORMULARIO */}
-                <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-orange-100 h-fit">
-                    <h3 className="text-xl font-bold text-[#3E2723] mb-6 flex items-center gap-2">
-                        <Plus className="bg-[#D2691E] text-white rounded-full p-1" size={24} /> Nuevo Postre
+                <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-purple-100 h-fit">
+                    <h3 className="text-xl font-bold text-[#4A148C] mb-6 flex items-center gap-2">
+                        <Plus className="bg-[#880E4F] text-white rounded-full p-1" size={24} /> Nuevo Detalle
                     </h3>
                     <form onSubmit={handlePublish} className="space-y-6">
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
-                        <div onClick={() => fileInputRef.current.click()} className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all group relative overflow-hidden ${imagePreview ? 'border-[#D2691E] bg-orange-50' : 'border-orange-200 hover:bg-orange-50'}`}>
+                        <div onClick={() => fileInputRef.current.click()} className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all group relative overflow-hidden ${imagePreview ? 'border-[#880E4F] bg-purple-50' : 'border-purple-200 hover:bg-purple-50'}`}>
                             {imagePreview ? (
                               <img src={imagePreview} className="h-48 object-contain rounded-lg shadow-sm" />
                             ) : (
                               <>
-                                <div className="bg-orange-100 p-4 rounded-full mb-3"><UploadCloud size={32} className="text-[#D2691E]" /></div>
+                                <div className="bg-orange-100 p-4 rounded-full mb-3"><UploadCloud size={32} className="text-[#D81B60]" /></div>
                                 <p className="font-bold text-gray-600">Subir foto</p>
                               </>
                             )}
                         </div>
                         <div className="space-y-4">
-                          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#D2691E]" disabled={loading}/>
-                          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#D2691E]" disabled={loading}></textarea>
+                           <div className="space-y-2">
+                             <label className="text-sm font-bold text-gray-700">Enlace de TikTok (Opcional)</label>
+                             <input 
+                               type="url"
+                               value={tiktokUrl}
+                               onChange={(e) => setTiktokUrl(e.target.value)}
+                               placeholder="Ej: https://www.tiktok.com/@usuario/video/123"
+                               className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#D81B60] focus:border-transparent outline-none transition-all placeholder-gray-400"
+                             />
+                           </div>
+                          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#D81B60]" disabled={loading}/>
+                          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#D81B60]" disabled={loading}></textarea>
                         </div>
-                        <button type="submit" disabled={loading} className="w-full bg-[#D2691E] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#A0522D] transition-all disabled:opacity-50 flex justify-center gap-2">
+                        <button type="submit" disabled={loading} className="w-full bg-[#D81B60] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#A0522D] transition-all disabled:opacity-50 flex justify-center gap-2">
                             {loading ? <Loader2 className="animate-spin" /> : "Publicar"}
                         </button>
                     </form>
@@ -239,13 +267,13 @@ export default function AdminDashboard() {
 
                 {/* LISTA */}
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-orange-100 h-fit max-h-[600px] overflow-y-auto">
-                    <h3 className="font-bold text-[#3E2723] mb-4">En Vitrina ({posts.length})</h3>
+                    <h3 className="font-bold text-[#1B5E20] mb-4">En Vitrina ({posts.length})</h3>
                     <div className="space-y-3">
                         {posts.map(post => (
                             <div key={post.id} className="flex gap-3 p-3 bg-gray-50 rounded-xl hover:bg-orange-50 transition-colors group relative">
                                 <img src={post.image} className="w-16 h-16 bg-white rounded-lg object-cover border border-gray-100" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm text-[#3E2723] truncate">{post.title}</p>
+                                    <p className="font-bold text-sm text-[#1B5E20] truncate">{post.title}</p>
                                     <div className="flex gap-2 mt-1">
                                        <span className="text-[10px] bg-orange-100 px-2 py-0.5 rounded-full text-orange-700 font-bold">👁️ {post.views || 0}</span>
                                        <span className="text-[10px] bg-blue-100 px-2 py-0.5 rounded-full text-blue-700 font-bold">💬 {post.comments?.length || 0}</span>
@@ -264,7 +292,7 @@ export default function AdminDashboard() {
         {activeTab === 'comments' && (
            <div className="animate-fade-in-up">
               <header className="mb-8">
-                  <h2 className="text-3xl font-serif text-[#3E2723] font-bold">Gestión de Comentarios</h2>
+                  <h2 className="text-3xl font-serif text-[#1B5E20] font-bold">Gestión de Comentarios</h2>
                   <p className="text-gray-500">Modera lo que dicen los clientes.</p>
               </header>
 
@@ -276,7 +304,7 @@ export default function AdminDashboard() {
                     </div>
                  ) : (
                     <table className="w-full text-left">
-                       <thead className="bg-orange-50 text-[#D2691E] text-xs uppercase tracking-wider">
+                       <thead className="bg-orange-50 text-[#D81B60] text-xs uppercase tracking-wider">
                           <tr>
                              <th className="p-4">Usuario</th>
                              <th className="p-4">Comentario</th>
@@ -288,14 +316,20 @@ export default function AdminDashboard() {
                           {allComments.map((comment, idx) => (
                              <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                 <td className="p-4 flex items-center gap-3">
-                                   <img src={comment.photo || "https://ui-avatars.com/api/?name=User"} className="w-8 h-8 rounded-full" />
-                                   <span className="font-bold text-sm text-gray-700">{comment.user}</span>
+                                   <img src={comment.user_photo || "https://ui-avatars.com/api/?name=User"} className="w-8 h-8 rounded-full" />
+                                   <span className="font-bold text-sm text-gray-700">{comment.user_name}</span>
                                 </td>
                                 <td className="p-4 text-gray-600 text-sm max-w-xs">{comment.text}</td>
                                 <td className="p-4">
-                                   <div className="flex items-center gap-2">
-                                      <img src={comment.postImage} className="w-8 h-8 rounded-md object-cover" />
-                                      <span className="text-xs text-gray-500 truncate max-w-[100px]">{comment.postTitle}</span>
+                                   <div className="flex items-center gap-3">
+                                      <img src={comment.postImage} className="w-12 h-12 rounded-lg object-cover shadow-sm bg-gray-100" />
+                                      <div>
+                                        <p className="font-bold text-[#1B5E20] text-sm">{comment.postTitle}</p>
+                                        <p className="text-xs text-gray-500 line-clamp-1">{comment.description}</p>
+                                        {comment.tiktok_url && (
+                                            <span className="inline-block mt-1 bg-black text-white text-[10px] px-2 py-0.5 rounded font-bold">TikTok 🎵</span>
+                                        )}
+                                      </div>
                                    </div>
                                 </td>
                                 <td className="p-4 text-right">
@@ -320,18 +354,18 @@ export default function AdminDashboard() {
         {activeTab === 'settings' && (
            <div className="animate-fade-in-up max-w-2xl">
               <header className="mb-8">
-                  <h2 className="text-3xl font-serif text-[#3E2723] font-bold">Configuración</h2>
+                  <h2 className="text-3xl font-serif text-[#1B5E20] font-bold">Configuración</h2>
                   <p className="text-gray-500">Detalles de la cuenta administrativa.</p>
               </header>
 
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-orange-100 space-y-6">
                  <div className="flex items-center gap-4 pb-6 border-b border-gray-100">
-                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-[#D2691E]">
+                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-[#D81B60]">
                        <User size={40} />
                     </div>
                     <div>
-                       <h3 className="text-xl font-bold text-[#3E2723]">Administrador</h3>
-                       <p className="text-gray-500">{auth.currentUser?.email}</p>
+                       <h3 className="text-xl font-bold text-[#1B5E20]">Administrador</h3>
+                       <p className="text-gray-500">{currentUser?.email}</p>
                        <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
                           Cuenta Verificada
                        </span>
@@ -344,15 +378,15 @@ export default function AdminDashboard() {
                  </div>
 
                  <div className="pt-4">
-                    <h4 className="font-bold text-[#3E2723] mb-2">Estadísticas Rápidas</h4>
+                    <h4 className="font-bold text-[#1B5E20] mb-2">Estadísticas Rápidas</h4>
                     <div className="grid grid-cols-2 gap-4">
                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <p className="text-gray-400 text-xs">Total Posts</p>
-                          <p className="text-2xl font-bold text-[#D2691E]">{posts.length}</p>
+                          <p className="text-2xl font-bold text-[#D81B60]">{posts.length}</p>
                        </div>
                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <p className="text-gray-400 text-xs">Total Comentarios</p>
-                          <p className="text-2xl font-bold text-[#D2691E]">{allComments.length}</p>
+                          <p className="text-2xl font-bold text-[#D81B60]">{allComments.length}</p>
                        </div>
                     </div>
                  </div>
@@ -370,7 +404,7 @@ function MenuButton({ icon: Icon, label, id, active, onClick }) {
         <button 
             onClick={() => onClick(id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all mb-1 ${
-                active === id ? 'bg-[#D2691E] text-white shadow-lg' : 'hover:bg-white/10 text-orange-100/80'
+                active === id ? 'bg-[#D81B60] text-white shadow-lg' : 'hover:bg-white/10 text-orange-100/80'
             }`}
         >
             <Icon size={20} />
